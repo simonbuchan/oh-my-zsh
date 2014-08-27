@@ -60,7 +60,7 @@
 function git_prompt_info() {
   local branch
   git_prompt_is_active || return
-  branch=$(current_branch) || return 1
+  branch=$(git_current_branch) || return 1
   printf '%s%s%s%s\n' \
     $ZSH_THEME_GIT_PROMPT_PREFIX \
     $branch \
@@ -145,6 +145,20 @@ git_change_status() {
   echo $return_str
 }
 
+# Checks if there are commits ahead from remote
+function git_prompt_ahead() {
+  if $(echo "$(command git log @{upstream}..HEAD 2> /dev/null)" | grep '^commit' &> /dev/null); then
+    echo "$ZSH_THEME_GIT_PROMPT_AHEAD"
+  fi
+}
+
+# Gets the number of commits ahead from remote
+function git_commits_ahead() {
+  if $(echo "$(command git log @{upstream}..HEAD 2> /dev/null)" | grep '^commit' &> /dev/null); then
+    COMMITS=$(command git log @{upstream}..HEAD | grep '^commit' | wc -l | tr -d ' ')
+    echo "$ZSH_THEME_GIT_COMMITS_AHEAD_PREFIX$COMMITS$ZSH_THEME_GIT_COMMITS_AHEAD_SUFFIX"
+  fi
+}
 # provides an associative array with instructions
 # used by grep in git_change_status
 setup_git_change_status() {
@@ -172,9 +186,8 @@ git_prompt_status() {
     $(git_stash_status)
 }
 
-# compare the provided version of git to the version installed and on path
-# prints 1 if installed version > input version
-# prints -1 otherwise
+# Returns true if the installed version of Git is greater than 1.7.2,
+# needed for status option `--ignore-submodules=dirty`
 is_recent_git_version() {
   local not_recent_git
   local installed_git
